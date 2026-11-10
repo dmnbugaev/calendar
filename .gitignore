@@ -1,0 +1,19 @@
+# Зависимости
+node_modules
+
+# Nuxt / Nitro
+.nuxt
+.output
+
+# Переменные окружения и секреты
+.env
+.env.local
+.env.*.local
+
+# Системные файлы
+.DS_Store
+
+# Playwright
+test-results
+playwright-report
+blob-report

@@ -1,0 +1,37 @@
+{
+  "name": "unicalendar",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@nuxt/ui": "^4.12.0",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.4",
+    "nuxt": "^4.6.4",
+    "postgres": "^4.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.0",
+    "@nuxt/eslint": "^1.12.0",
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^24.0.0",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9.30.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0",
+    "vue-tsc": "^3.3.14"
+  }
+}

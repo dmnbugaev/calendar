@@ -1,0 +1,5 @@
+{
+  // Nuxt генерирует .nuxt/tsconfig.json и подключает его через extends ниже
+  // (создаётся командой `nuxt prepare`, вызывается в postinstall).
+  "extends": "./.nuxt/tsconfig.json"
+}
