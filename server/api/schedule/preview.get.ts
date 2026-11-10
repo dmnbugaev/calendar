@@ -5,14 +5,15 @@ import { buildServices } from '../../services/factories'
 
 /**
  * GET /api/schedule/preview — публичный предпросмотр расписания
- * группы на ближайшие 7 дней (данные университета публичны,
- * секреты не задействованы).
+ * группы на ближайший месяц (данные университета публичны,
+ * секреты не задействованы). Занятия по правилам владельца
+ * (физподготовка, проектная деятельность, Webinar) не показываются.
  */
 export default defineEventHandler(async (event) => {
   const services = buildServices(event)
 
   const today = moscowToday()
-  const to = addDaysToDate(today, 6)
+  const to = addDaysToDate(today, 29)
 
   let raw
   try {
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const lessons = normalizeSchedule(raw, { window: { from: today, to } })
+  const { lessons } = normalizeSchedule(raw, { window: { from: today, to } })
 
   // Группировка по датам с сохранением порядка времени.
   const byDate = new Map<string, typeof lessons>()

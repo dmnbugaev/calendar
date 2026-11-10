@@ -1,4 +1,4 @@
-import type { NormalizedLesson, RawSchedule } from '#shared/types/sync'
+import type { NormalizedLesson, RawSchedule, RawScheduleLesson } from '#shared/types/sync'
 import type { CalendarEvent, GoogleEventPayload } from '../../server/services/google/calendar'
 import { GoogleCalendarService } from '../../server/services/google/calendar'
 import type { SyncEngineStore } from '../../server/services/sync/engine'
@@ -56,7 +56,9 @@ export function gridSlot(lessons: object[]): Record<string, object[]> {
   return grid
 }
 
-export function gridLesson(options: FakeLessonOptions & { day: number; slot: number }): object {
+export function gridLesson(
+  options: FakeLessonOptions & { day: number; slot: number },
+): RawScheduleLesson & { day: number; slot: number } {
   return {
     // day/slot — тестовые метки, gridSlot читает их из объекта.
     day: options.day,
@@ -80,9 +82,9 @@ export function gridLesson(options: FakeLessonOptions & { day: number; slot: num
   }
 }
 
-/** Нормализованные занятия расписания в окне. */
+/** Нормализованные занятия расписания в окне (без учёта счётчика фильтров). */
 export function normalizeWindow(schedule: RawSchedule, from: string, to: string): NormalizedLesson[] {
-  return normalizeSchedule(schedule, { window: { from, to } })
+  return normalizeSchedule(schedule, { window: { from, to } }).lessons
 }
 
 // -------------------------------------------------------------------

@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { NormalizedLesson, RawSchedule, RawScheduleLesson, WeekParity } from '#shared/types/sync'
+import { checkLessonExclusion } from './filters'
+import { stripHtml } from './html'
 import { MOSCOW_TIME_ZONE, moscowIso, pairTimes } from './times'
 import { SCHEDULE_PAGE_URL } from './provider'
 
@@ -83,10 +85,19 @@ export function payloadHash(lesson: NormalizedLesson): string {
   return createHash('sha256').update(canonical, 'utf8').digest('hex').slice(0, 32)
 }
 
+/** Результат нормализации: занятия + число исключённых по правилам владельца. */
+export interface NormalizeResult {
+  lessons: NormalizedLesson[]
+  /** Сколько занятий (слотов, не дат) исключено фильтрами (физра, ПД, Webinar). */
+  filteredCount: number
+  /** Причины исключений (по одному на занятие, первые 20). */
+  filteredReasons: string[]
+}
+
 export function normalizeSchedule(
   schedule: RawSchedule,
   options: NormalizeOptions,
-): NormalizedLesson[] {
+): NormalizeResult {
   const { from, to } = options.window
   if (from > to) {
     throw new ScheduleNormalizerError('Некорректное окно нормализации')
@@ -94,6 +105,8 @@ export function normalizeSchedule(
 
   const group = schedule.group.title
   const lessons: NormalizedLesson[] = []
+  const filteredReasons: string[] = []
+  let filteredCount = 0
 
   for (const [dayKey, slots] of Object.entries(schedule.grid)) {
     const weekday = Number(dayKey)
@@ -118,6 +131,14 @@ export function normalizeSchedule(
       )
 
       sorted.forEach((lesson, slotIndex) => {
+        // Правила исключения владельца (до разворота дат).
+        const exclusion = checkLessonExclusion(lesson)
+        if (exclusion.excluded) {
+          filteredCount++
+          if (filteredReasons.length < 20) filteredReasons.push(exclusion.reason)
+          return
+        }
+
         const dates = lessonDates(lesson.df, lesson.dt, weekday, {
           from,
           to,
@@ -139,7 +160,7 @@ export function normalizeSchedule(
   }
 
   lessons.sort((a, b) => (a.startsAt + a.key).localeCompare(b.startsAt + b.key))
-  return lessons
+  return { lessons, filteredCount, filteredReasons }
 }
 
 interface BuildLessonInput {
@@ -231,23 +252,8 @@ export function extractAuditoryInfo(lesson: RawScheduleLesson): AuditoryInfo {
   }
 }
 
-/** Убирает HTML-теги, извлекая href из первой ссылки, и декодирует entities. */
-export function stripHtml(value: string): { text: string; href: string | null } {
-  const linkMatch = /<a\s[^>]*href="([^"]*)"[^>]*>[\s\S]*?<\/a>/i.exec(value)
-  const href = linkMatch ? decodeEntities(linkMatch[1]!) : null
-  const text = decodeEntities(value.replace(/<[^>]*>/g, '')).trim()
-  return { text, href }
-}
-
-function decodeEntities(value: string): string {
-  return value
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-}
+/** stripHtml вынесен в ./html и реэкспортируется для обратной совместимости. */
+export { stripHtml } from './html'
 
 interface LessonDatesInput {
   from: string

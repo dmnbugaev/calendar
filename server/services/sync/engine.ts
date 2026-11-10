@@ -126,9 +126,11 @@ export class SyncEngine {
       //    события не трогаем.
       const schedule = await provider.fetchSchedule()
 
-      // 2. Окно синхронизации: от сегодняшнего дня (Europe/Moscow) до конца семестра.
+      // 2. Окно синхронизации: от сегодняшнего дня (Europe/Moscow) на месяц
+      //    вперёд, но не дальше конца семестра.
       const today = moscowToday(this.now())
-      const windowTo = schedule.group.dateTo
+      const monthAhead = addDays(today, 29)
+      const windowTo = schedule.group.dateTo < monthAhead ? schedule.group.dateTo : monthAhead
       if (today > windowTo) {
         return await finish(
           'success',
@@ -136,11 +138,18 @@ export class SyncEngine {
         )
       }
 
-      const lessons = normalizeSchedule(schedule, { window: { from: today, to: windowTo } })
+      const { lessons, filteredCount, filteredReasons } = normalizeSchedule(schedule, {
+        window: { from: today, to: windowTo },
+      })
+      // Исключённые занятия — не ошибка: информация идёт в сообщение отчёта.
+      const filteredNote = filteredCount > 0
+        ? ` Исключено по правилам владельца: ${filteredCount}`
+          + (filteredReasons.length ? ` (${filteredReasons.slice(0, 5).join('; ')})` : '')
+        : ''
 
       // 3. Существующие помеченные события календаря в окне.
       const timeMin = moscowIso(today, '00:00')
-      const timeMax = moscowIso(addDay(windowTo), '00:00')
+      const timeMax = moscowIso(addDays(windowTo, 1), '00:00')
       const existingEvents = await calendar.listEvents(this.deps.calendarId, timeMin, timeMax)
       const index = indexByLessonKey(existingEvents)
 
@@ -252,7 +261,7 @@ export class SyncEngine {
         ? `Синхронизация завершена с ошибками: создано ${createdCount}, обновлено ${updatedCount}, `
           + `удалено ${deletedCount}, без изменений ${unchangedCount}, ошибок ${errorDetails.length}.`
         : `Синхронизация завершена: создано ${createdCount}, обновлено ${updatedCount}, `
-          + `удалено ${deletedCount}, без изменений ${unchangedCount}.`
+          + `удалено ${deletedCount}, без изменений ${unchangedCount}.${filteredNote}`
       return await finish(status, message)
     } catch (error) {
       if (error instanceof CalendarAccessRevokedError) {
@@ -308,12 +317,12 @@ function errorText(error: unknown): string {
   return String(error)
 }
 
-function addDay(date: string): string {
+function addDays(date: string, days: number): string {
   return formatMoscowDate(new Date(
     Date.UTC(
       Number(date.slice(0, 4)),
       Number(date.slice(5, 7)) - 1,
-      Number(date.slice(8, 10)) + 1,
+      Number(date.slice(8, 10)) + days,
     ),
   ))
 }

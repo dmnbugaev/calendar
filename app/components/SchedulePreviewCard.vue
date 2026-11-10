@@ -39,7 +39,7 @@ function dayKey(date: string): string {
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-calendar-days" class="size-5 text-(--ui-primary)" />
         <h2 class="text-lg font-semibold">
-          Расписание на 7 дней
+          Расписание на месяц
         </h2>
       </div>
     </template>
@@ -60,7 +60,7 @@ function dayKey(date: string): string {
 
     <div v-else-if="!props.preview || props.preview.days.length === 0" class="py-8 text-center text-(--ui-text-muted)">
       <UIcon name="i-lucide-coffee" class="mx-auto size-8 mb-2" />
-      В ближайшие 7 дней занятий нет.
+      На ближайший месяц занятий нет.
     </div>
 
     <div v-else class="space-y-5">

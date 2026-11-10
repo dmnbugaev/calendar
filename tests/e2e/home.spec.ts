@@ -24,13 +24,13 @@ test.describe('UniCalendar: главная страница', () => {
 
   test('предпросмотр расписания: занятие или корректная деградация', async ({ page }) => {
     await page.goto('/')
-    const scheduleCard = page.getByRole('heading', { name: 'Расписание на 7 дней' })
+    const scheduleCard = page.getByRole('heading', { name: 'Расписание на месяц' })
     await expect(scheduleCard).toBeVisible()
 
     // Источник доступен → показываются занятия; недоступен → ошибка, не вечная загрузка.
     const dayHeading = page.getByRole('heading', { level: 3 }).first()
     const errorAlert = page.getByText('Не удалось загрузить расписание')
-    const emptyState = page.getByText('В ближайшие 7 дней занятий нет')
+    const emptyState = page.getByText('На ближайший месяц занятий нет')
     await expect(dayHeading.or(errorAlert).or(emptyState).first()).toBeVisible({ timeout: 15_000 })
   })
 
@@ -113,5 +113,17 @@ test.describe('UniCalendar: защита маршрутов', () => {
   test('GET /api/history без сессии — отказ', async ({ request }) => {
     const response = await request.get('/api/history')
     expect(REFUSED).toContain(response.status())
+  })
+
+  test('GET /api/cron/sync без токена — отказ (401 или 503 без настройки)', async ({ request }) => {
+    const response = await request.get('/api/cron/sync')
+    expect([401, 503]).toContain(response.status())
+  })
+
+  test('GET /api/cron/sync с неверным токеном — отказ', async ({ request }) => {
+    const response = await request.get('/api/cron/sync', {
+      headers: { authorization: 'Bearer wrong-secret' },
+    })
+    expect([401, 503]).toContain(response.status())
   })
 })

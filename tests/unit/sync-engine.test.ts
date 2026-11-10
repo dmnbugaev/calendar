@@ -13,7 +13,7 @@ import {
 import { GoogleCalendarError } from '../../server/services/google/calendar'
 import { ScheduleProviderError } from '../../server/services/schedule/provider'
 import { parseScheduleResponse } from '../../server/services/schedule/parser'
-import { payloadHash } from '../../server/services/schedule/normalizer'
+import { normalizeSchedule, payloadHash } from '../../server/services/schedule/normalizer'
 
 /**
  * 13 обязательных сценариев синхронизации (задание, раздел 10).
@@ -45,7 +45,7 @@ describe('SyncEngine', () => {
   it('1. первая синхронизация — создаёт все события', async () => {
     const schedule = buildRawSchedule({ grid: gridSlot([
       gridLesson({ day: 2, slot: 2, location: 'А-234' }),
-      gridLesson({ day: 3, slot: 1, subject: 'Проектная деятельность', location: 'ПД' }),
+      gridLesson({ day: 3, slot: 1, subject: 'Проектирование баз данных', location: 'В-502' }),
     ]) })
     const calendar = new FakeCalendar()
     const store = new FakeStore()
@@ -372,8 +372,8 @@ describe('SyncEngine', () => {
 
   it('12. дубликаты невозможны: два занятия в одном слоте получают разные ключи', async () => {
     const schedule = buildRawSchedule({ grid: gridSlot([
-      gridLesson({ day: 2, slot: 2, subject: 'Проектная деятельность', location: 'ПД' }),
-      gridLesson({ day: 2, slot: 2, subject: 'Проектная деятельность', location: 'ПД2' }),
+      gridLesson({ day: 2, slot: 2, subject: 'Иностранный язык', location: 'В-502' }),
+      gridLesson({ day: 2, slot: 2, subject: 'Иностранный язык', location: 'В-504' }),
     ]) })
     const calendar = new FakeCalendar()
     const store = new FakeStore()
@@ -461,12 +461,24 @@ describe('Нормализатор', () => {
   })
 
   it('HTML в аудиториях превращается в чистый текст и ссылку', () => {
+    // Note: занятия с пометкой «Webinar» отфильтрованы правилами владельца,
+    // поэтому для проверки HTML-разбора берём нейтральную онлайн-пометку.
     const schedule = buildRawSchedule({ grid: gridSlot([
-      gridLesson({ day: 2, slot: 2, location: '<a href="https://webinar.example/join" target="_blank">📷 Webinar</a>' }),
+      gridLesson({ day: 2, slot: 2, location: '<a href="https://online.example/room123" target="_blank">📷 Online</a>' }),
     ]) })
     const lessons = normalizeWindow(schedule, '2026-11-10', '2026-11-10')
-    expect(lessons[0]!.location).toBe('📷 Webinar')
-    expect(lessons[0]!.url).toBe('https://webinar.example/join')
+    expect(lessons[0]!.location).toBe('📷 Online')
+    expect(lessons[0]!.url).toBe('https://online.example/room123')
+  })
+
+  it('занятие Webinar исключается из нормализованного расписания', () => {
+    const schedule = buildRawSchedule({ grid: gridSlot([
+      gridLesson({ day: 2, slot: 2, location: '<a href="https://my.mts-link.ru/j/x" target="_blank">📷 Webinar</a>' }),
+      gridLesson({ day: 2, slot: 3, subject: 'Проектирование баз данных', location: 'В-502' }),
+    ]) })
+    const result = normalizeSchedule(schedule, { window: { from: '2026-11-10', to: '2026-11-10' } })
+    expect(result.lessons.map((l) => l.subject)).toEqual(['Проектирование баз данных'])
+    expect(result.filteredCount).toBe(1)
   })
 
   it('аудитория формата «А-234» распознаётся как корпус и аудитория', () => {
