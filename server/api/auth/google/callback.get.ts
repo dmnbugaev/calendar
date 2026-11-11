@@ -58,14 +58,16 @@ export default defineEventHandler(async (event) => {
     if (!refreshToken) {
       return fail('Google не вернул refresh token — повторите вход (prompt=consent обязателен)')
     }
-  } catch {
+  } catch (error) {
+    console.error('[auth/callback] exchangeCode failed:', error)
     return fail('Не удалось обменять код авторизации на токены')
   }
 
   let userInfo
   try {
     userInfo = await services.oauth.fetchUserInfo(accessToken)
-  } catch {
+  } catch (error) {
+    console.error('[auth/callback] fetchUserInfo failed:', error)
     return fail('Не удалось определить аккаунт Google')
   }
 
